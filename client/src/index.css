@@ -1,0 +1,256 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Core palette */
+  --bg-page:        #f1f5f9;
+  --bg-white:       #ffffff;
+  --bg-surface:     #f8fafc;
+  --border:         #e2e8f0;
+  --border-light:   #f1f5f9;
+
+  --text-primary:   #1e293b;
+  --text-secondary: #64748b;
+  --text-muted:     #94a3b8;
+
+  --accent-blue:    #2563eb;
+  --accent-blue-lt: #eff6ff;
+  --accent-blue-bd: #dbeafe;
+
+  --logo-orange:    #f97316;
+
+  /* Admin Sidebar colors */
+  --bg-sidebar:     #1e293b;
+  --sidebar-text:   #94a3b8;
+  --sidebar-active: #2563eb;
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite linear;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* All inputs globally */
+input, select, textarea {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: #fff;
+  outline: none;
+  transition: border-color .15s;
+  padding: 0 12px;
+}
+input:focus, select:focus, textarea:focus {
+  border-color: #93c5fd;
+}
+
+/* Hide browser default password reveal button and clear button */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none !important;
+}
+
+input[type="password"]::-webkit-reveal,
+input[type="password"]::-webkit-clear-button {
+  display: none !important;
+}
+
+/* Hide Chrome/Safari auto-fill icons that might overlap */
+input::-webkit-contacts-auto-fill-button,
+input::-webkit-credentials-auto-fill-button {
+  display: none !important;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Aggressively hide 'Skip to content' injected by browser wrappers like LuminaLearn */
+a[href*="skip"], 
+a[aria-label*="skip"],
+a[aria-label*="Skip"],
+.skip-link, 
+.skip-to-content,
+[id*="skip"] {
+  display: none !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+/* All buttons globally */
+button { font-family: inherit; cursor: pointer; }
+
+/* Remove default scrollbar ugliness */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+
+/* Navbar */
+nav {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  height: 52px;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+.logo-circle {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #f97316;
+  color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+.logo-text { font-size: 15px; font-weight: 700; color: #1e293b; }
+
+.nav-link {
+  padding: 6px 14px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: #64748b;
+  background: none; border: none; cursor: pointer;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+.nav-link:hover    { background: #f1f5f9; color: #1e293b; }
+.nav-link.active   { background: #eff6ff; color: #2563eb; font-weight: 500; }
+
+.notif-bell {
+  position: relative;
+  width: 34px; height: 34px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+}
+.notif-bell .badge {
+  position: absolute; top: -3px; right: -3px;
+  width: 17px; height: 17px;
+  border-radius: 50%;
+  background: #ef4444;
+  color: #fff; font-size: 9px; font-weight: 700;
+  border: 2px solid #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+
+.user-avatar {
+  width: 32px; height: 32px;
+  border-radius: 50%;
+  background: #dbeafe;
+  color: #1e40af;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* Admin Sidebar */
+.admin-sidebar {
+  width: 200px;
+  background: var(--bg-sidebar);
+  color: var(--sidebar-text);
+  height: calc(100vh - 52px);
+  position: sticky;
+  top: 52px;
+  padding: 16px 12px;
+}
+
+.admin-nav-item {
+  padding: 8px 12px;
+  border-radius: 7px;
+  font-size: 13px;
+  color: var(--sidebar-text);
+  cursor: pointer;
+  margin-bottom: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  text-decoration: none;
+}
+.admin-nav-item:hover  { background: rgba(255,255,255,.06); color: #e2e8f0; }
+.admin-nav-item.active { background: var(--sidebar-active); color: #fff; }
+
+/* Map */
+.map-sidebar {
+  width: 280px;
+  background: #fff;
+  border-left: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidebar-issue-card {
+  padding: 10px 14px;
+  border-bottom: 1px solid #f1f5f9;
+  cursor: pointer;
+}
+.sidebar-issue-card:hover { background: #f8fafc; }
+
+.fab-report {
+  position: absolute;
+  bottom: 24px; right: 24px;
+  background: #2563eb; color: #fff;
+  border: none; border-radius: 50px;
+  padding: 12px 24px;
+  font-size: 14px; font-weight: 700;
+  cursor: pointer; z-index: 1000;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.4);
+  display: flex; align-items: center; gap: 8px;
+  transition: all 0.2s;
+}
+.fab-report:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(37, 99, 235, 0.5);
+  background: #1d4ed8;
+}
+
+/* Leaflet fix for light mode */
+.leaflet-container { 
+  font-family: inherit; 
+  background: var(--bg-page) !important;
+}
+.leaflet-popup-content-wrapper { 
+  background: #fff; 
+  border: 1px solid var(--border); 
+  border-radius: 12px; 
+  box-shadow: 0 1px 3px rgba(0,0,0,0.06); 
+  color: var(--text-primary);
+}
+.leaflet-popup-tip { background: #fff; }
+.leaflet-popup-content { margin: 12px; }
+
+@layer components {
+  .card {
+    background: var(--bg-white);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 16px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+}
