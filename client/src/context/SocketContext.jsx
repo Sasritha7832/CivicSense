@@ -25,8 +25,10 @@ export function SocketProvider({ children }) {
 
     const token = localStorage.getItem('token')
 
-    // Extract base URL from VITE_API_URL (remove /api if present) or default to '/'
-    const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '/';
+    // Extract base URL from VITE_API_URL (remove /api if present) or use Render URL directly
+    const socketUrl = import.meta.env.VITE_API_URL 
+      ? import.meta.env.VITE_API_URL.replace('/api', '') 
+      : 'https://civicsense-iqs5.onrender.com';
     
     socketRef.current = io(socketUrl, {
       auth: { token },
