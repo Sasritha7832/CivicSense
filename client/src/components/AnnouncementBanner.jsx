@@ -14,7 +14,7 @@ export default function AnnouncementBanner() {
 
   useEffect(() => {
     api.get('/announcements').then(({ data }) => {
-      setAnnouncements(data.announcements);
+      setAnnouncements(data.announcements || []);
     }).catch(() => {});
   }, []);
 
@@ -26,7 +26,7 @@ export default function AnnouncementBanner() {
     });
 
     socket.on('announcement:deleted', (id) => {
-      setAnnouncements(prev => prev.filter(a => a._id !== id));
+      setAnnouncements(prev => (prev || []).filter(a => a._id !== id));
     });
 
     return () => {
@@ -41,7 +41,7 @@ export default function AnnouncementBanner() {
     localStorage.setItem('dismissedAnnouncements', JSON.stringify(newDismissed));
   };
 
-  const activeAnnouncements = announcements.filter(a => 
+  const activeAnnouncements = (announcements || []).filter(a => 
     !dismissed.includes(a._id) && 
     (!a.ward || !user || a.ward === user.ward)
   );

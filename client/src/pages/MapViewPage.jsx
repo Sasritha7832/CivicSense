@@ -80,7 +80,7 @@ export default function MapViewPage() {
   }, [fetchIssues]);
 
   const filteredIssues = useMemo(() => {
-    return allIssues.filter(issue => {
+    return (allIssues || []).filter(issue => {
       if (selectedCategory !== 'all' && issue.category?._id !== selectedCategory) return false;
       if (dateRange.start && new Date(issue.createdAt) < new Date(dateRange.start)) return false;
       if (dateRange.end && new Date(issue.createdAt) > new Date(dateRange.end)) return false;
@@ -89,7 +89,7 @@ export default function MapViewPage() {
   }, [allIssues, selectedCategory, dateRange]);
 
   const getCategoryCount = useCallback((catId) => {
-    return allIssues.filter(i => {
+    return (allIssues || []).filter(i => {
       if (dateRange.start && new Date(i.createdAt) < new Date(dateRange.start)) return false;
       if (dateRange.end && new Date(i.createdAt) > new Date(dateRange.end)) return false;
       return catId === 'all' ? true : i.category?._id === catId;

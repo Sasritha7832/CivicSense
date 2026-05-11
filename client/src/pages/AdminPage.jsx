@@ -76,7 +76,7 @@ const AdminPage = () => {
   const fetchAnnouncements = async () => {
     try {
       const res = await api.get('/announcements');
-      setAnnouncements(res.data.announcements);
+      setAnnouncements(res.data.announcements || []);
     } catch (err) { console.error(err); }
   };
 
@@ -119,7 +119,7 @@ const AdminPage = () => {
     try {
       const params = { page, limit: 15, ...filters };
       const res = await api.get('/issues', { params });
-      setIssues(res.data.issues);
+      setIssues(res.data.issues || []);
       setPagination({ page: res.data.page, pages: res.data.pages });
     } catch (err) {
       console.error(err);
@@ -131,7 +131,7 @@ const AdminPage = () => {
   const fetchOfficers = async () => {
     try {
       const res = await api.get('/admin/officers');
-      setOfficers(res.data.officers);
+      setOfficers(res.data.officers || []);
     } catch (err) {
       console.error(err);
     }
@@ -140,7 +140,7 @@ const AdminPage = () => {
   const fetchAuditLogs = async (page = 1) => {
     try {
       const res = await api.get('/admin/audit-log', { params: { page, limit: 20 } });
-      setAuditLogs(res.data.logs);
+      setAuditLogs(res.data.logs || []);
     } catch (err) {
       console.error(err);
     }
@@ -149,7 +149,7 @@ const AdminPage = () => {
   const fetchCategories = async () => {
     try {
       const res = await api.get('/categories');
-      setCategories(res.data.categories);
+      setCategories(res.data.categories || []);
     } catch (err) {
       console.error(err);
     }
