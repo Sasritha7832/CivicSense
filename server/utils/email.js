@@ -1,13 +1,16 @@
 const nodemailer = require('nodemailer');
 
 // Initialize Nodemailer transport using Gmail
-const transporter = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+let transporter = null;
+if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+  transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
 
 const fromEmail = process.env.EMAIL_FROM || process.env.SMTP_USER;
 
@@ -32,6 +35,10 @@ const brandClose = `
  * Sends the 6-digit OTP for new user registration verification
  */
 const sendOTPEmail = async (to, otp) => {
+  if (!transporter) {
+    console.warn(`[Mock Email] Would have sent OTP ${otp} to ${to}. SMTP not configured.`);
+    return;
+  }
   try {
     const info = await transporter.sendMail({
       from: fromEmail,
@@ -56,6 +63,7 @@ const sendOTPEmail = async (to, otp) => {
  * Sends the 6-digit OTP for resetting a forgotten password
  */
 const sendResetOTP = async (to, otp) => {
+  if (!transporter) return;
   try {
     const info = await transporter.sendMail({
       from: fromEmail,
@@ -80,6 +88,7 @@ const sendResetOTP = async (to, otp) => {
  * Sends a welcome email immediately after successful OTP verification
  */
 const sendWelcomeEmail = async (to, name) => {
+  if (!transporter) return;
   try {
     const info = await transporter.sendMail({
       from: fromEmail,
@@ -100,6 +109,7 @@ const sendWelcomeEmail = async (to, name) => {
 };
 
 const sendStatusUpdateEmail = async (to, issue, newStatus) => {
+  if (!transporter) return;
   const statusColors = { open:'#ef4444', in_progress:'#f59e0b', resolved:'#22c55e', rejected:'#6b7280' };
   const color = statusColors[newStatus] || '#3b82f6';
   try {
@@ -120,6 +130,7 @@ const sendStatusUpdateEmail = async (to, issue, newStatus) => {
 };
 
 const sendAssignmentEmail = async (to, issue, slaDeadline) => {
+  if (!transporter) return;
   try {
     await transporter.sendMail({
       from: fromEmail,
