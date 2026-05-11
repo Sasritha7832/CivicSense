@@ -11,6 +11,9 @@ const { createRedisClient } = require('../config/redis');
 const { getQueue } = require('../utils/queueFallback');
 const { generateIssuesCSV } = require('../utils/csv');
 const { generateIssuesPDF } = require('../utils/pdf');
+const { uploadMultipleImages } = require('../utils/cloudinary');
+const { sendAssignmentEmail } = require('../utils/email');
+const { checkAndAwardBadges } = require('../utils/gamification');
 
 const redisClient = createRedisClient();
 const imageQueue = getQueue('image-compression', { connection: redisClient });
@@ -88,6 +91,17 @@ const getIssues = async (req, res) => {
 const createIssue = async (req, res) => {
   const { title, description, category, priority, lat, lng, address, ward } = req.body;
 
+  // Rate Limiting: Max 5 reports per user per day
+  const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+  const userIssueCount = await Issue.countDocuments({
+    createdBy: req.user._id,
+    createdAt: { $gte: oneDayAgo }
+  });
+
+  if (userIssueCount >= 5) {
+    return res.status(429).json({ error: 'Rate limit exceeded: Maximum 5 issues can be reported per day.' });
+  }
+
   const cat = await Category.findById(category);
   if (!cat) return res.status(400).json({ message: 'Invalid category' });
 
@@ -107,28 +121,68 @@ const createIssue = async (req, res) => {
     });
   }
 
+  let assignedTo = null;
+  let assignedAt = null;
+  let status = 'Open';
+  let officer = null;
+
+  if (ward) {
+    // Simple regex match for ward (e.g., 'Koramangala' matches 'Koramangala, Bangalore')
+    officer = await User.findOne({ 
+      role: 'officer', 
+      ward: { $regex: new RegExp(ward, 'i') } 
+    });
+    if (officer) {
+      assignedTo = officer._id;
+      assignedAt = new Date();
+      status = 'InProgress';
+    }
+  }
+
   const issue = await Issue.create({
     title,
     description,
     category,
+    status,
+    assignedTo,
+    assignedAt,
     priority: priority ? (priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase()) : 'Medium',
     location: { lat, lng, address, ward },
     createdBy: req.user._id,
     slaDeadline: new Date(Date.now() + 72 * 60 * 60 * 1000) // Default 72h
   });
 
+  if (officer) {
+    sendAssignmentEmail(officer.email, issue, issue.slaDeadline).catch(err =>
+      console.error('[createIssue] Auto-assign Email error:', err.message)
+    );
+    await Notification.create({
+      userId: officer._id,
+      type: 'assigned',
+      message: `New issue automatically assigned to you: "${issue.title}".`,
+      issueId: issue._id
+    });
+    const io = getIO();
+    if (io) {
+      io.to(`user:${officer._id}`).emit('issue:assigned', {
+        issueId: issue._id,
+        title: issue.title
+      });
+    }
+  }
+
   // Gamification: +10 points for reporting
   await User.findByIdAndUpdate(req.user._id, { $inc: { points: 10 } });
+  await checkAndAwardBadges(req.user._id);
 
-  // Handle images via worker
+  // Handle images via Cloudinary
   if (req.files && req.files.length > 0) {
-    for (const file of req.files) {
-      const filename = `${Date.now()}-${file.originalname}`;
-      await imageQueue.add('compress', {
-        buffer: file.buffer.toString('base64'),
-        filename,
-        issueId: issue._id
-      });
+    try {
+      const imageUrls = await uploadMultipleImages(req.files);
+      issue.images = imageUrls;
+      await issue.save();
+    } catch (err) {
+      console.error('Cloudinary upload error:', err);
     }
   }
 
@@ -160,6 +214,34 @@ const getIssueById = async (req, res) => {
   res.json(issue);
 };
 
+// PUT /api/issues/:id
+const editIssue = async (req, res) => {
+  const { title, description, category, priority } = req.body;
+  const issue = await Issue.findById(req.params.id);
+  
+  if (!issue) return res.status(404).json({ message: 'Issue not found' });
+
+  // Only creator can edit
+  if (issue.createdBy.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'Not authorized to edit this issue' });
+  }
+
+  // Only open issues can be edited
+  if (issue.status !== 'Open') {
+    return res.status(400).json({ message: 'Can only edit Open issues' });
+  }
+
+  if (title) issue.title = title;
+  if (description) issue.description = description;
+  if (category) issue.category = category;
+  if (priority) {
+    issue.priority = priority.charAt(0).toUpperCase() + priority.slice(1).toLowerCase();
+  }
+
+  await issue.save();
+  res.json(issue);
+};
+
 // PATCH /api/issues/:id/status
 const updateIssueStatus = async (req, res) => {
   const { status, rejectionReason, resolutionComment, internalNotes } = req.body;
@@ -178,6 +260,7 @@ const updateIssueStatus = async (req, res) => {
     issue.resolvedAt = new Date();
     // Gamification: +20 points for resolved issue
     await User.findByIdAndUpdate(issue.createdBy, { $inc: { points: 20 } });
+    await checkAndAwardBadges(issue.createdBy);
   } else if (status !== 'Resolved') {
     issue.resolvedAt = null;
   }
@@ -227,6 +310,7 @@ const toggleUpvote = async (req, res) => {
   } else {
     issue.upvotes.push(req.user._id);
     await User.findByIdAndUpdate(issue.createdBy, { $inc: { points: 2 } });
+    await checkAndAwardBadges(issue.createdBy);
     await checkUpvoteEscalation(issue._id);
   }
 
@@ -238,17 +322,18 @@ const toggleUpvote = async (req, res) => {
 const uploadProof = async (req, res) => {
   if (!req.files || req.files.length === 0) return res.status(400).json({ message: 'No proof files uploaded' });
   
-  const issueId = req.params.id;
-  for (const file of req.files) {
-    const filename = `proof-${Date.now()}-${file.originalname}`;
-    await imageQueue.add('compress', {
-      buffer: file.buffer.toString('base64'),
-      filename,
-      issueId
-    });
-  }
+  const issue = await Issue.findById(req.params.id);
+  if (!issue) return res.status(404).json({ message: 'Issue not found' });
 
-  res.json({ message: 'Proof uploaded and processing' });
+  try {
+    const imageUrls = await uploadMultipleImages(req.files);
+    issue.images = [...(issue.images || []), ...imageUrls];
+    await issue.save();
+    res.json({ message: 'Proof uploaded', images: imageUrls });
+  } catch (err) {
+    console.error('Cloudinary upload error:', err);
+    res.status(500).json({ message: 'Failed to upload proof images' });
+  }
 };
 
 // GET /api/issues/user/me
@@ -355,11 +440,46 @@ const exportPDF = async (req, res) => {
   res.send(pdfBuffer);
 };
 
+// POST /api/issues/:id/rate
+const rateIssue = async (req, res) => {
+  const { rating, feedback } = req.body;
+  const issue = await Issue.findById(req.params.id);
+
+  if (!issue) return res.status(404).json({ message: 'Issue not found' });
+  
+  // Only the creator can rate
+  if (issue.createdBy.toString() !== req.user._id.toString()) {
+    return res.status(403).json({ message: 'Not authorized to rate this issue' });
+  }
+
+  // Only resolved issues can be rated
+  if (issue.status !== 'Resolved') {
+    return res.status(400).json({ message: 'Only resolved issues can be rated' });
+  }
+
+  // Cannot rate twice
+  if (issue.rating) {
+    return res.status(400).json({ message: 'Issue has already been rated' });
+  }
+
+  issue.rating = rating;
+  if (feedback) issue.feedback = feedback;
+  await issue.save();
+
+  // Give the officer points for a good rating
+  if (issue.assignedTo && rating >= 4) {
+    await User.findByIdAndUpdate(issue.assignedTo, { $inc: { points: 5 } });
+  }
+
+  res.json({ message: 'Rating submitted successfully', issue });
+};
+
 const commentsCtrl = require('./comments.controller');
 
 module.exports = {
   getIssues,
   createIssue,
+  editIssue,
   getIssueById,
   updateIssueStatus,
   toggleUpvote,
@@ -368,6 +488,7 @@ module.exports = {
   deleteIssue,
   exportCSV,
   exportPDF,
+  rateIssue,
   getComments: commentsCtrl.getCommentsByIssue,
   addComment: commentsCtrl.createComment,
   replyToComment: commentsCtrl.replyToComment,

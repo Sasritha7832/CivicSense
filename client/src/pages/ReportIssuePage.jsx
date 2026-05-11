@@ -58,12 +58,15 @@ export default function ReportIssuePage() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [categories, setCategories] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchLoading, setSearchLoading] = useState(false);
   const [form, setForm] = useState(() => {
     const saved = localStorage.getItem('issueDraft');
     if (saved) return JSON.parse(saved);
     return { title: '', description: '', category: '', priority: 'medium', ward: '' };
   });
   const [errors, setErrors] = useState({});
+  const [userLocation, setUserLocation] = useState(null);
 
   // Draft Autosave
   useEffect(() => {
@@ -85,9 +88,13 @@ export default function ReportIssuePage() {
     }).catch(() => {});
 
     // Auto-detect current location if no coordinates provided in URL
-    if (!hasCoords && navigator.geolocation) {
+    if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
-        (pos) => setPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          if (!hasCoords) setPosition(loc);
+        },
         (err) => console.log('Geolocation error:', err),
         { enableHighAccuracy: true }
       );
@@ -128,9 +135,55 @@ export default function ReportIssuePage() {
     return () => clearTimeout(timeout);
   }, [position, form.ward]);
 
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchQuery) return;
+    setSearchLoading(true);
+    try {
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setPosition({ lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon) });
+        setSearchQuery('');
+      } else {
+        toast.error('Location not found');
+      }
+    } catch (err) {
+      toast.error('Search failed');
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const calculateDistance = (p1, p2) => {
+    const R = 6371e3; // metres
+    const φ1 = p1.lat * Math.PI/180;
+    const φ2 = p2.lat * Math.PI/180;
+    const Δφ = (p2.lat-p1.lat) * Math.PI/180;
+    const Δλ = (p2.lng-p1.lng) * Math.PI/180;
+
+    const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) +
+              Math.cos(φ1) * Math.cos(φ2) *
+              Math.sin(Δλ/2) * Math.sin(Δλ/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; // in metres
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!position) return toast.error('Please pin a location on the map');
+    
+    // Validate that user is actually at the location (within 200m)
+    if (userLocation) {
+      const distance = calculateDistance(userLocation, position);
+      if (distance > 200) {
+        return toast.error(`Verification failed: You must be at the actual location to report this issue. (Currently ${Math.round(distance)}m away)`);
+      }
+    } else {
+      return toast.error('Please enable GPS to verify your location.');
+    }
+
     if (!form.category) return toast.error('Please select a category');
     if (!form.ward) return toast.error('Please select your ward');
     setLoading(true);
@@ -296,8 +349,24 @@ export default function ReportIssuePage() {
         <div className="lg:col-span-2 sticky top-[72px] h-fit">
           <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', overflow: 'hidden', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
             <div style={{ padding: '12px 16px', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-              <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', margin: 0 }}>📍 Pin Location</p>
-              <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0' }}>Click to place · Drag marker to adjust</p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <p style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', margin: 0 }}>📍 Pin Location</p>
+                  <p style={{ fontSize: '11px', color: '#64748b', margin: '2px 0 0' }}>Click to place · Drag marker to adjust</p>
+                </div>
+                <form onSubmit={handleSearch} style={{ display: 'flex', gap: '4px' }}>
+                  <input 
+                    type="text" 
+                    placeholder="Search address..." 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{ padding: '4px 8px', fontSize: '12px', border: '1px solid #cbd5e1', borderRadius: '4px', width: '140px' }}
+                  />
+                  <button type="submit" disabled={searchLoading} style={{ padding: '4px 8px', fontSize: '12px', background: '#e2e8f0', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+                    {searchLoading ? '...' : '🔍'}
+                  </button>
+                </form>
+              </div>
             </div>
             <div style={{ height: '450px' }}>
               <MapContainer

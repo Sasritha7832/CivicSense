@@ -22,13 +22,11 @@ const setupSLAWorker = (connection) => {
     }).populate('assignedTo');
 
     for (const issue of approaching) {
+      // Always mark as warning sent so we don't process it again
+      issue.slaWarningSent = true;
+      await issue.save();
+
       if (issue.assignedTo) {
-        const message = `⚠️ SLA Warning: "${issue.title}" deadline in under 2 hours!`;
-
-        // Mark as warning sent
-        issue.slaWarningSent = true;
-        await issue.save();
-
         // Email
         await sendStatusUpdateEmail(
           issue.assignedTo.email,

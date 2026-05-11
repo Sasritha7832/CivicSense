@@ -36,6 +36,8 @@ const issueSchema = new mongoose.Schema({
   duplicateOf: { type: mongoose.Schema.Types.ObjectId, ref: 'Issue', default: null },
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   isDeleted: { type: Boolean, default: false },
+  rating: { type: Number, min: 1, max: 5, default: null },
+  feedback: { type: String, trim: true, maxlength: 500 },
 }, { 
   timestamps: true,
   toJSON: { virtuals: true },

@@ -25,6 +25,7 @@ const notificationRoutes = require('./routes/notifications.routes');
 const statsRoutes = require('./routes/stats.routes');
 const officerRoutes = require('./routes/officer.routes');
 const categoryRoutes = require('./routes/categories.routes');
+const announcementRoutes = require('./routes/announcements.routes');
 
 const app = express();
 const httpServer = http.createServer(app);
@@ -100,6 +101,7 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/stats', statsRoutes);
 app.use('/api/officer', officerRoutes);
 app.use('/api/categories', categoryRoutes);
+app.use('/api/announcements', announcementRoutes);
 
 // ─── Error Handler ───────────────────────────────────────────────────────────
 app.use(errorHandler);

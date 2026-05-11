@@ -49,11 +49,12 @@ function MapEventHandler({ onBoundsChange }) {
 export default function MapViewPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const [issues, setIssues] = useState([]);
+  const [allIssues, setAllIssues] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [dateRange, setDateRange] = useState({ start: '', end: '' });
   const [bounds, setBounds] = useState(null);
   const [zoom, setZoom] = useState(13);
   const mapRef = useRef();
@@ -65,22 +66,37 @@ export default function MapViewPage() {
   const fetchIssues = useCallback(async () => {
     setLoading(true);
     try {
-      const params = { limit: 1000 };
-      if (selectedCategory !== 'all') params.category = selectedCategory;
-      const { data } = await api.get('/issues', { params });
-      setIssues(data.issues || []);
+      const { data } = await api.get('/issues', { params: { limit: 1000 } });
+      setAllIssues(data.issues || []);
     } catch (err) {
       console.error('Failed to fetch issues:', err);
     } finally {
       setLoading(false);
     }
-  }, [selectedCategory]);
+  }, []);
 
   useEffect(() => {
     fetchIssues();
   }, [fetchIssues]);
 
-  const points = useMemo(() => issues
+  const filteredIssues = useMemo(() => {
+    return allIssues.filter(issue => {
+      if (selectedCategory !== 'all' && issue.category?._id !== selectedCategory) return false;
+      if (dateRange.start && new Date(issue.createdAt) < new Date(dateRange.start)) return false;
+      if (dateRange.end && new Date(issue.createdAt) > new Date(dateRange.end)) return false;
+      return true;
+    });
+  }, [allIssues, selectedCategory, dateRange]);
+
+  const getCategoryCount = useCallback((catId) => {
+    return allIssues.filter(i => {
+      if (dateRange.start && new Date(i.createdAt) < new Date(dateRange.start)) return false;
+      if (dateRange.end && new Date(i.createdAt) > new Date(dateRange.end)) return false;
+      return catId === 'all' ? true : i.category?._id === catId;
+    }).length;
+  }, [allIssues, dateRange]);
+
+  const points = useMemo(() => filteredIssues
     .filter(issue => issue.location?.lat != null && issue.location?.lng != null)
     .map(issue => ({
       type: 'Feature',
@@ -89,7 +105,7 @@ export default function MapViewPage() {
         type: 'Point',
         coordinates: [issue.location.lng, issue.location.lat] // GeoJSON: [lng, lat]
       }
-    })), [issues]);
+    })), [filteredIssues]);
 
   const { clusters, supercluster } = useSupercluster({
     points,
@@ -134,10 +150,10 @@ export default function MapViewPage() {
         height: '56px', padding: '0 16px', borderBottom: '1px solid #e2e8f0',
         display: 'flex', alignItems: 'center', gap: '16px', background: '#fff'
       }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', flex: 1, maxWidth: '400px' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', flex: 1, maxWidth: '300px' }}>
           <input 
             type="text" 
-            placeholder="Search location or issue..." 
+            placeholder="Search map location..." 
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             style={{ 
@@ -147,6 +163,22 @@ export default function MapViewPage() {
           />
         </form>
         
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input 
+            type="date" 
+            value={dateRange.start}
+            onChange={e => setDateRange({...dateRange, start: e.target.value})}
+            style={{ height: '36px', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0 8px', fontSize: '12px' }}
+          />
+          <span style={{ color: '#94a3b8', fontSize: '12px' }}>to</span>
+          <input 
+            type="date" 
+            value={dateRange.end}
+            onChange={e => setDateRange({...dateRange, end: e.target.value})}
+            style={{ height: '36px', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '0 8px', fontSize: '12px' }}
+          />
+        </div>
+        
         <div style={{ display: 'flex', gap: '8px', overflowX: 'auto', padding: '4px 0' }}>
           <button 
             onClick={() => setSelectedCategory('all')}
@@ -155,10 +187,10 @@ export default function MapViewPage() {
               padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '500',
               background: selectedCategory === 'all' ? '#eff6ff' : '#f1f5f9',
               color: selectedCategory === 'all' ? '#2563eb' : '#64748b',
-              border: 'none', cursor: 'pointer', whiteSpace: 'nowrap'
+              border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px'
             }}
           >
-            All Issues
+            All Issues <span style={{ background: selectedCategory === 'all' ? '#bfdbfe' : '#e2e8f0', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', color: '#1e293b' }}>{getCategoryCount('all')}</span>
           </button>
           {categories.map(cat => (
             <button 
@@ -168,10 +200,10 @@ export default function MapViewPage() {
                 padding: '6px 14px', borderRadius: '20px', fontSize: '12px', fontWeight: '500',
                 background: selectedCategory === cat._id ? '#eff6ff' : '#f1f5f9',
                 color: selectedCategory === cat._id ? '#2563eb' : '#64748b',
-                border: 'none', cursor: 'pointer', whiteSpace: 'nowrap'
+                border: 'none', cursor: 'pointer', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '6px'
               }}
             >
-              {cat.name}
+              {cat.name} <span style={{ background: selectedCategory === cat._id ? '#bfdbfe' : '#e2e8f0', padding: '2px 6px', borderRadius: '10px', fontSize: '10px', color: '#1e293b' }}>{getCategoryCount(cat._id)}</span>
             </button>
           ))}
         </div>
@@ -265,11 +297,10 @@ export default function MapViewPage() {
           </div>
         </div>
 
-        {/* Right Sidebar */}
         <div className="map-sidebar">
           <div style={{ padding: '16px', borderBottom: '1px solid #f1f5f9' }}>
             <h2 style={{ fontSize: '15px', fontWeight: '700', color: '#1e293b' }}>
-              Nearby Issues ({issues.length})
+              Nearby Issues ({filteredIssues.length})
             </h2>
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
@@ -281,8 +312,8 @@ export default function MapViewPage() {
                   </div>
                 ))}
               </div>
-            ) : issues.length > 0 ? (
-              issues.map(issue => (
+            ) : filteredIssues.length > 0 ? (
+              filteredIssues.map(issue => (
                 <IssueCardCompact 
                   key={issue._id}
                   id={issue._id}

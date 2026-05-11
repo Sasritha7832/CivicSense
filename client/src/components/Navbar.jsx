@@ -49,6 +49,7 @@ export default function Navbar() {
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
           <Link to="/" className={`nav-link ${isActive('/') ? 'active' : ''}`}>Map</Link>
+          <Link to="/leaderboard" className={`nav-link ${isActive('/leaderboard') ? 'active' : ''}`}>Leaderboard</Link>
           <Link to="/my-reports" className={`nav-link ${isActive('/my-reports') ? 'active' : ''}`}>My Reports</Link>
           <Link to="/notifications" className={`nav-link ${isActive('/notifications') ? 'active' : ''}`}>Notifications</Link>
           {isAdmin && <Link to="/admin" className={`nav-link ${isActive('/admin') ? 'active' : ''}`}>Admin</Link>}

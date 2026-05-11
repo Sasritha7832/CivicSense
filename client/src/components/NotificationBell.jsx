@@ -77,7 +77,7 @@ export default function NotificationBell() {
               </div>
             ) : (
               notifications.map((n) => (
-                <div key={n.id} className={`p-4 border-b border-gray-800/50 hover:bg-gray-800/50 transition-colors ${!n.isRead ? 'bg-primary-950/30' : ''}`}>
+                <div key={n._id} className={`p-4 border-b border-gray-800/50 hover:bg-gray-800/50 transition-colors ${!n.isRead ? 'bg-primary-950/30' : ''}`}>
                   <div className="flex gap-3">
                     {!n.isRead && <div className="w-2 h-2 rounded-full bg-primary-400 mt-1 flex-shrink-0" />}
                     <div className={!n.isRead ? '' : 'ml-5'}>
@@ -85,9 +85,9 @@ export default function NotificationBell() {
                       <p className="text-xs text-gray-500 mt-1">
                         {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                       </p>
-                      {n.issue && (
+                      {n.issueId && (
                         <Link
-                          to={`/issues/${n.issue.id}`}
+                          to={`/issues/${n.issueId._id || n.issueId}`}
                           className="text-xs text-primary-400 hover:underline mt-1 block"
                           onClick={() => setOpen(false)}
                         >

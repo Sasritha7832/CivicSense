@@ -9,4 +9,6 @@ router.get('/public', [
   validate
 ], ctrl.getPublicStats);
 
+router.get('/leaderboard', ctrl.getLeaderboard);
+
 module.exports = router;

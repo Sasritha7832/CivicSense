@@ -19,7 +19,7 @@ export default function IssueCard({ issue, compact = false }) {
         borderBottom:'1px solid #f1f5f9', transition:'background 0.2s'
       }} className="sidebar-issue-card">
         <div style={{ display:'flex', gap:'12px', alignItems:'start' }}>
-          {image && <img src={image} alt="" style={{ width:'48px', height:'48px', borderRadius:'8px', objectCover:'cover', flexShrink:0 }} />}
+          {image && <img src={image} alt="" style={{ width:'48px', height:'48px', borderRadius:'8px', objectFit:'cover', flexShrink:0 }} />}
           <div style={{ flex:1, minWidth:0 }}>
             <p style={{ fontSize:'13px', fontWeight:'600', color:'#1e293b', margin:'0 0 4px', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>
               {issue.title}

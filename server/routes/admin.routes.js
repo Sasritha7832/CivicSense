@@ -29,6 +29,20 @@ router.get('/officers', [
   validate
 ], ctrl.getOfficers);
 
+router.post('/officers', [
+  body('name').notEmpty().withMessage('Name is required'),
+  body('email').isEmail().withMessage('Valid email required'),
+  body('password').isLength({ min: 6 }).withMessage('Password must be at least 6 characters'),
+  body('ward').notEmpty().withMessage('Ward is required'),
+  body('department').notEmpty().withMessage('Department is required'),
+  validate
+], ctrl.createOfficer);
+
+router.delete('/officers/:id', [
+  param('id').isMongoId().withMessage('Invalid officer ID'),
+  validate
+], ctrl.removeOfficer);
+
 router.post('/assign', [
   body('issueId').isMongoId().withMessage('Invalid issue ID'),
   body('officerId').isMongoId().withMessage('Invalid officer ID'),

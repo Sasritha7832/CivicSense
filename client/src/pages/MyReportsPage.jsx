@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api/axios';
+import { useAuth } from '../context/AuthContext';
 import EmptyState from '../components/EmptyState';
 import Skeleton from '../components/Skeleton';
 import IssueCardFull from '../components/IssueCardFull';
@@ -9,6 +10,7 @@ const STATUSES = ['all', 'open', 'in_progress', 'resolved', 'rejected'];
 const STATUS_LABELS = { all: 'All Reports', open: 'Open', in_progress: 'In Progress', resolved: 'Resolved', rejected: 'Rejected' };
 
 export default function MyReportsPage() {
+  const { user } = useAuth();
   const [issues, setIssues] = useState([]);
   const [loading, setLoading] = useState(true);
   const [status, setStatus] = useState('all');
@@ -29,7 +31,7 @@ export default function MyReportsPage() {
   return (
     <div style={{ maxWidth: '800px', margin: '0 auto', padding: '32px 20px', minHeight: '100vh', background: '#f1f5f9' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: 0 }}>My Reports</h1>
+        <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: 0 }}>My Profile & Reports</h1>
         <Link to="/report" style={{ 
           background: '#2563eb', color: '#fff', padding: '8px 16px', 
           borderRadius: '8px', fontSize: '13px', fontWeight: '600', 
@@ -38,6 +40,32 @@ export default function MyReportsPage() {
           + Report Issue
         </Link>
       </div>
+
+      {/* Profile Header */}
+      {user && (
+        <div style={{ background: '#fff', borderRadius: '16px', padding: '24px', marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0' }}>
+          <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px', fontWeight: 'bold' }}>
+            {user.name.charAt(0).toUpperCase()}
+          </div>
+          <div style={{ flex: 1 }}>
+            <h2 style={{ fontSize: '20px', fontWeight: '700', color: '#1e293b', margin: '0 0 4px' }}>{user.name}</h2>
+            <div style={{ display: 'flex', gap: '16px', alignItems: 'center', marginTop: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#fef3c7', padding: '6px 12px', borderRadius: '20px', color: '#b45309', fontWeight: '700', fontSize: '13px' }}>
+                <span style={{ fontSize: '16px' }}>🏆</span> {user.points || 0} Points
+              </div>
+              {user.badges?.length > 0 ? (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {user.badges.map(b => (
+                    <span key={b} style={{ background: '#f1f5f9', color: '#475569', fontSize: '12px', fontWeight: '600', padding: '4px 10px', borderRadius: '12px' }}>🏅 {b}</span>
+                  ))}
+                </div>
+              ) : (
+                <span style={{ fontSize: '13px', color: '#94a3b8' }}>No badges yet</span>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Filter tabs */}
       <div style={{ display: 'flex', gap: '4px', marginBottom: '24px', overflowX: 'auto', paddingBottom: '4px' }}>

@@ -88,8 +88,8 @@ export default function NotificationsPage() {
                   <p style={{ fontSize: '12px', color: '#94a3b8', margin: 0 }}>
                     {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
                   </p>
-                  {n.link && (
-                    <Link to={n.link} style={{ fontSize: '12px', color: '#2563eb', fontWeight: '500', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
+                  {n.issueId && (
+                    <Link to={`/issues/${n.issueId._id || n.issueId}`} style={{ fontSize: '12px', color: '#2563eb', fontWeight: '500', textDecoration: 'none' }} onClick={(e) => e.stopPropagation()}>
                       View issue →
                     </Link>
                   )}

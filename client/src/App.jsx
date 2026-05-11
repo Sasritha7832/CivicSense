@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom'
 import { Suspense, lazy } from 'react'
 import { useAuth } from './context/AuthContext'
 import Navbar from './components/Navbar'
+import AnnouncementBanner from './components/AnnouncementBanner'
 import ErrorBoundary from './components/ErrorBoundary'
 import Skeleton from './components/Skeleton'
 
@@ -17,6 +18,7 @@ const NotificationsPage = lazy(() => import('./pages/NotificationsPage'))
 const AdminPage         = lazy(() => import('./pages/AdminPage'))
 const OfficerPage       = lazy(() => import('./pages/OfficerPage'))
 const StatsPage         = lazy(() => import('./pages/StatsPage'))
+const LeaderboardPage   = lazy(() => import('./pages/LeaderboardPage'))
 
 function ProtectedRoute({ children, roles }) {
   const { user, loading } = useAuth()
@@ -45,6 +47,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#f1f5f9]">
       <Navbar />
+      <AnnouncementBanner />
       <div>
         <ErrorBoundary>
           <Routes>
@@ -55,6 +58,7 @@ export default function App() {
             <Route path="/reset-password" element={<PageSuspense><ResetPasswordPage /></PageSuspense>} />
             <Route path="/issues/:id" element={<PageSuspense><IssueDetailPage /></PageSuspense>} />
             <Route path="/stats" element={<PageSuspense><StatsPage /></PageSuspense>} />
+            <Route path="/leaderboard" element={<PageSuspense><LeaderboardPage /></PageSuspense>} />
 
             <Route path="/report" element={
               <ProtectedRoute>

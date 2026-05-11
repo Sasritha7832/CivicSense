@@ -3,6 +3,7 @@ const User = require('../models/User');
 const AuditLog = require('../models/AuditLog');
 const Notification = require('../models/Notification');
 const Category = require('../models/Category');
+const bcrypt = require('bcryptjs');
 const { getIO } = require('../config/socket');
 const { sendStatusUpdateEmail, sendAssignmentEmail } = require('../utils/email');
 
@@ -172,9 +173,59 @@ const bulkUpdateStatus = async (req, res) => {
 // GET /api/admin/officers
 const getOfficers = async (req, res) => {
   const officers = await User.find({ role: 'officer' })
-    .select('name email ward')
+    .select('name email ward department')
     .lean();
   res.json({ officers });
+};
+
+// POST /api/admin/officers — Create a new officer account
+const createOfficer = async (req, res) => {
+  const { name, email, password, ward, department } = req.body;
+
+  const exists = await User.findOne({ email });
+  if (exists) return res.status(400).json({ message: 'An account with this email already exists.' });
+
+  const passwordHash = await bcrypt.hash(password, 10);
+  const officer = await User.create({
+    name,
+    email,
+    passwordHash,
+    role: 'officer',
+    ward,
+    department,
+    isVerified: true  // Admin-created officers are pre-verified
+  });
+
+  await AuditLog.create({
+    adminId: req.user._id,
+    action: 'CREATE_OFFICER',
+    field: 'role',
+    newValue: `${name} (${email}) assigned to ${ward}`
+  });
+
+  res.status(201).json({ 
+    message: `Officer account created for ${name}`,
+    officer: { _id: officer._id, name: officer.name, email: officer.email, ward: officer.ward, department: officer.department }
+  });
+};
+
+// DELETE /api/admin/officers/:id — Remove officer (demote to citizen)
+const removeOfficer = async (req, res) => {
+  const officer = await User.findByIdAndUpdate(
+    req.params.id,
+    { role: 'citizen', ward: null, department: null },
+    { new: true }
+  );
+  if (!officer) return res.status(404).json({ message: 'Officer not found' });
+
+  await AuditLog.create({
+    adminId: req.user._id,
+    action: 'REMOVE_OFFICER',
+    field: 'role',
+    newValue: `${officer.name} demoted to citizen`
+  });
+
+  res.json({ message: `${officer.name} has been removed as an officer.` });
 };
 
 module.exports = {
@@ -182,5 +233,7 @@ module.exports = {
   getAuditLog,
   assignIssue,
   bulkUpdateStatus,
-  getOfficers
+  getOfficers,
+  createOfficer,
+  removeOfficer
 };

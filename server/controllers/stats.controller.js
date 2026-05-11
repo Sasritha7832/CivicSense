@@ -1,4 +1,5 @@
 const Issue = require('../models/Issue');
+const User = require('../models/User');
 
 // GET /api/stats/public — No auth required
 const getPublicStats = async (req, res) => {
@@ -77,4 +78,15 @@ const getPublicStats = async (req, res) => {
   });
 };
 
-module.exports = { getPublicStats };
+// GET /api/stats/leaderboard
+const getLeaderboard = async (req, res) => {
+  const topUsers = await User.find({ role: 'citizen' })
+    .sort({ points: -1 })
+    .limit(20)
+    .select('name points badges ward')
+    .lean();
+
+  res.json({ leaderboard: topUsers });
+};
+
+module.exports = { getPublicStats, getLeaderboard };

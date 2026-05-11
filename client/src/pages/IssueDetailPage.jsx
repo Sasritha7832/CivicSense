@@ -122,6 +122,13 @@ export default function IssueDetailPage() {
   const [isOfficialNote, setIsOfficialNote] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [isAnimating, setIsAnimating] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState({ title: '', description: '', priority: '' });
+  const [statusUpdate, setStatusUpdate] = useState({ status: '', rejectionReason: '', resolutionComment: '', internalNotes: '' });
+  
+  const [ratingVal, setRatingVal] = useState(0);
+  const [feedbackBody, setFeedbackBody] = useState('');
+  const [submittingRating, setSubmittingRating] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -131,6 +138,8 @@ export default function IssueDetailPage() {
           api.get(`/issues/${id}/comments`),
         ]);
         setIssue(issueData);
+        setEditForm({ title: issueData.title, description: issueData.description, priority: issueData.priority });
+        setStatusUpdate({ status: issueData.status, rejectionReason: issueData.rejectionReason || '', resolutionComment: issueData.resolutionComment || '', internalNotes: issueData.internalNotes || '' });
         setVoteCount(issueData.upvotes?.length || 0);
         setVoted(user ? issueData.upvotes?.some((uid) => (typeof uid === 'string' ? uid === user._id : uid._id === user._id)) : false);
         setComments(cmtData);
@@ -183,6 +192,41 @@ export default function IssueDetailPage() {
       } catch (err) {
         toast.error('Failed to delete report');
       }
+    }
+  };
+
+  const handleEditSubmit = async () => {
+    try {
+      const { data } = await api.put(`/issues/${id}`, editForm);
+      setIssue(prev => ({ ...prev, ...data }));
+      setIsEditing(false);
+      toast.success('Issue updated successfully');
+    } catch (err) {
+      toast.error('Failed to update issue');
+    }
+  };
+
+  const handleStatusUpdate = async () => {
+    try {
+      const { data } = await api.patch(`/issues/${id}/status`, statusUpdate);
+      setIssue(prev => ({ ...prev, ...data }));
+      toast.success('Status updated successfully');
+    } catch (err) {
+      toast.error('Failed to update status');
+    }
+  };
+
+  const handleRateSubmit = async () => {
+    if (ratingVal === 0) return toast.error('Please select a star rating');
+    setSubmittingRating(true);
+    try {
+      const { data } = await api.post(`/issues/${id}/rate`, { rating: ratingVal, feedback: feedbackBody });
+      setIssue(prev => ({ ...prev, rating: data.issue.rating, feedback: data.issue.feedback }));
+      toast.success('Thank you for your feedback!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to submit rating');
+    } finally {
+      setSubmittingRating(false);
     }
   };
 
@@ -286,6 +330,11 @@ export default function IssueDetailPage() {
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
                     Share
                   </button>
+                  {user && user._id === issue.createdBy?._id && issue.status === 'Open' && !isEditing && (
+                    <button onClick={() => setIsEditing(true)} style={{ background: '#e0f2fe', color: '#0284c7', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
+                      Edit
+                    </button>
+                  )}
                   {user && (user.role === 'admin' || user._id === issue.createdBy?._id) && (
                     <button onClick={handleDelete} style={{ background: '#fee2e2', color: '#ef4444', border: 'none', padding: '6px 12px', borderRadius: '8px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}>
                       Delete
@@ -294,8 +343,32 @@ export default function IssueDetailPage() {
                 </div>
               </div>
               
-              <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: '0 0 12px' }}>{issue.title}</h1>
-              <p style={{ fontSize: '15px', color: '#475569', lineHeight: '1.6', margin: '0 0 24px', whiteSpace: 'pre-wrap' }}>{issue.description}</p>
+              {issue.rejectionReason && issue.status === 'Rejected' && (
+                <div style={{ padding: '12px', background: '#fee2e2', color: '#991b1b', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+                  <strong>Rejection Reason:</strong> {issue.rejectionReason}
+                </div>
+              )}
+              {issue.resolutionComment && issue.status === 'Resolved' && (
+                <div style={{ padding: '12px', background: '#dcfce3', color: '#166534', borderRadius: '8px', fontSize: '14px', marginBottom: '16px' }}>
+                  <strong>Resolution Comment:</strong> {issue.resolutionComment}
+                </div>
+              )}
+
+              {isEditing ? (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '24px' }}>
+                  <input value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} style={{ fontSize: '20px', fontWeight: '700', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                  <textarea value={editForm.description} onChange={e => setEditForm({...editForm, description: e.target.value})} style={{ fontSize: '15px', minHeight: '100px', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', resize: 'vertical' }} />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button onClick={handleEditSubmit} style={{ background: '#2563eb', color: '#fff', padding: '6px 16px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>Save</button>
+                    <button onClick={() => setIsEditing(false)} style={{ background: '#f1f5f9', color: '#475569', padding: '6px 16px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>Cancel</button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <h1 style={{ fontSize: '24px', fontWeight: '700', color: '#1e293b', margin: '0 0 12px' }}>{issue.title}</h1>
+                  <p style={{ fontSize: '15px', color: '#475569', lineHeight: '1.6', margin: '0 0 24px', whiteSpace: 'pre-wrap' }}>{issue.description}</p>
+                </>
+              )}
               
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingTop: '20px', borderTop: '1px solid #f1f5f9', fontSize: '13px', color: '#64748b' }}>
                 <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#dbeafe', color: '#1e40af', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', fontSize: '11px' }}>
@@ -400,6 +473,78 @@ export default function IssueDetailPage() {
               Upvote to show that this issue also affects you or you support its resolution.
             </p>
           </div>
+
+          {/* Rating Card (For Creator when Resolved) */}
+          {issue.status === 'Resolved' && user && user._id === issue.createdBy?._id && (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '16px' }}>⭐ Rate the Resolution</h3>
+              {issue.rating ? (
+                <div style={{ textAlign: 'center', padding: '16px', background: '#f8fafc', borderRadius: '12px' }}>
+                  <div style={{ fontSize: '24px', letterSpacing: '4px', marginBottom: '8px' }}>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <span key={i} style={{ color: i < issue.rating ? '#f59e0b' : '#e2e8f0' }}>★</span>
+                    ))}
+                  </div>
+                  {issue.feedback && <p style={{ fontSize: '13px', color: '#475569', fontStyle: 'italic', margin: 0 }}>"{issue.feedback}"</p>}
+                  <p style={{ fontSize: '12px', color: '#10b981', fontWeight: '600', marginTop: '12px' }}>✓ Rating submitted</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', fontSize: '28px', cursor: 'pointer' }}>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <span 
+                        key={star} 
+                        onClick={() => setRatingVal(star)}
+                        style={{ color: star <= ratingVal ? '#f59e0b' : '#e2e8f0', transition: 'color 0.2s' }}
+                      >
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <textarea 
+                    placeholder="Optional feedback..." 
+                    value={feedbackBody} 
+                    onChange={e => setFeedbackBody(e.target.value)} 
+                    style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0', fontSize: '13px' }} 
+                  />
+                  <button 
+                    onClick={handleRateSubmit} 
+                    disabled={submittingRating || ratingVal === 0}
+                    style={{ background: '#2563eb', color: '#fff', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer', opacity: (submittingRating || ratingVal === 0) ? 0.6 : 1 }}
+                  >
+                    {submittingRating ? 'Submitting...' : 'Submit Rating'}
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Admin / Officer Actions */}
+          {(isAdmin || isOfficer) && (
+            <div style={{ background: '#fff', borderRadius: '16px', border: '1px solid #e2e8f0', padding: '20px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>
+              <h3 style={{ fontSize: '14px', fontWeight: '700', color: '#1e293b', marginBottom: '16px' }}>⚙️ Update Status</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <select value={statusUpdate.status} onChange={e => setStatusUpdate({...statusUpdate, status: e.target.value})} style={{ width: '100%', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                  <option value="Open">Open</option>
+                  <option value="InProgress">In Progress</option>
+                  <option value="Resolved">Resolved</option>
+                  <option value="Rejected">Rejected</option>
+                </select>
+                
+                {statusUpdate.status === 'Rejected' && (
+                  <textarea placeholder="Rejection Reason (Visible to user)" value={statusUpdate.rejectionReason} onChange={e => setStatusUpdate({...statusUpdate, rejectionReason: e.target.value})} style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                )}
+                
+                {statusUpdate.status === 'Resolved' && (
+                  <textarea placeholder="Resolution Comment (Visible to user)" value={statusUpdate.resolutionComment} onChange={e => setStatusUpdate({...statusUpdate, resolutionComment: e.target.value})} style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '8px', border: '1px solid #e2e8f0' }} />
+                )}
+
+                <textarea placeholder="Internal Notes (Hidden from user)" value={statusUpdate.internalNotes} onChange={e => setStatusUpdate({...statusUpdate, internalNotes: e.target.value})} style={{ width: '100%', minHeight: '60px', padding: '8px', borderRadius: '8px', border: '1px solid #fde68a', background: '#fffbeb' }} />
+                
+                <button onClick={handleStatusUpdate} style={{ background: '#1e293b', color: '#fff', padding: '10px', borderRadius: '8px', fontWeight: '600', border: 'none', cursor: 'pointer' }}>Update Status</button>
+              </div>
+            </div>
+          )}
 
           {/* SLA Card */}
           {issue.slaDeadline && (
