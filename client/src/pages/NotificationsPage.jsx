@@ -26,7 +26,7 @@ export default function NotificationsPage() {
     setLoading(true)
     try {
       const { data } = await api.get('/notifications', { params: { page, limit: 20 } })
-      setNotifications(data.notifications)
+      setNotifications(data.notifications || [])
       setTotal(data.total)
       setUnread(data.unread)
       setPages(data.pages)

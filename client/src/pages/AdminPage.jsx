@@ -108,7 +108,7 @@ const AdminPage = () => {
   const fetchDashboard = async () => {
     try {
       const res = await api.get('/admin/stats');
-      setDashboard(res.data);
+      setDashboard(res.data?.charts ? res.data : null);
     } catch (err) {
       console.error(err);
     }

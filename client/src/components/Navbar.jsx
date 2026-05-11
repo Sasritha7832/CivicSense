@@ -26,7 +26,7 @@ export default function Navbar() {
   useEffect(() => {
     if (!user || !notifOpen) return;
     api.get('/notifications?limit=8').then(({ data }) => {
-      setNotifications(data.notifications);
+      setNotifications(data.notifications || []);
       resetUnread();
     }).catch(() => {});
   }, [notifOpen, user]);

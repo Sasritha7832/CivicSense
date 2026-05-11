@@ -21,7 +21,7 @@ export default function NotificationBell() {
     setLoading(true)
     try {
       const res = await api.get('/notifications?limit=10')
-      setNotifications(res.data.notifications)
+      setNotifications(res.data.notifications || [])
     } catch {}
     setLoading(false)
   }

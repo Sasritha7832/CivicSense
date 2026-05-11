@@ -83,8 +83,8 @@ export default function ReportIssuePage() {
 
   useEffect(() => {
     api.get('/categories').then(({ data }) => {
-      setCategories(data.categories);
-      if (data.categories.length) setForm((f) => ({ ...f, category: data.categories[0]._id }));
+      setCategories(data.categories || []);
+      if (data.categories?.length) setForm((f) => ({ ...f, category: data.categories[0]._id }));
     }).catch(() => {});
 
     // Auto-detect current location if no coordinates provided in URL

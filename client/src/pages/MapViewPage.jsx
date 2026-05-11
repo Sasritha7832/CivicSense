@@ -60,7 +60,7 @@ export default function MapViewPage() {
   const mapRef = useRef();
 
   useEffect(() => {
-    api.get('/categories').then(({ data }) => setCategories(data.categories)).catch(() => {});
+    api.get('/categories').then(({ data }) => setCategories(data.categories || [])).catch(() => {});
   }, []);
 
   const fetchIssues = useCallback(async () => {

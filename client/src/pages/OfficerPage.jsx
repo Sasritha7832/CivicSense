@@ -22,7 +22,7 @@ export default function OfficerPage() {
           ...filters 
         } 
       })
-      setIssues(res.data.issues)
+      setIssues(res.data.issues || [])
     } catch (err) {
       toast.error('Failed to load assigned issues')
     }

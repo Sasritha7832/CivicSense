@@ -10,7 +10,7 @@ export default function LeaderboardPage() {
 
   useEffect(() => {
     api.get('/stats/leaderboard').then(({ data }) => {
-      setUsers(data.leaderboard);
+      setUsers(data.leaderboard || []);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);

@@ -21,7 +21,7 @@ export default function MyReportsPage() {
     setLoading(true);
     api.get('/issues/user/me', { params: { status, page, limit: 10 } })
       .then(({ data }) => { 
-        setIssues(data.issues); 
+        setIssues(data.issues || []);
         setPagination(data.pagination); 
       })
       .catch(() => {})
