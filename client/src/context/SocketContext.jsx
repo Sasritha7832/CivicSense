@@ -25,7 +25,10 @@ export function SocketProvider({ children }) {
 
     const token = localStorage.getItem('token')
 
-    socketRef.current = io('/', {
+    // Extract base URL from VITE_API_URL (remove /api if present) or default to '/'
+    const socketUrl = import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace('/api', '') : '/';
+    
+    socketRef.current = io(socketUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
       autoConnect: true,
